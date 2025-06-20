@@ -1,0 +1,21 @@
+{
+  "name": "librenav-server",
+  "module": "src/main.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@ai-sdk/google": "^1.2.19",
+    "@types/pg": "^8.15.1",
+    "ai": "^4.3.16",
+    "better-auth": "^1.2.7",
+    "hono": "^4.7.9",
+    "hono-rate-limiter": "^0.4.2",
+    "pg": "^8.16.0"
+  }
+}
