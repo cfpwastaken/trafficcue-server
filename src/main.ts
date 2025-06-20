@@ -62,6 +62,10 @@ app.get("/api/config", (c) => {
 		capabilities.push("ai");
 	}
 
+	if(process.env.TANKERKOENIG_API_KEY) {
+		capabilities.push("fuel");
+	}
+
 	return c.json({
 		name: "TrafficCue Server",
 		version: "0",
@@ -117,6 +121,45 @@ app.post("/api/review", async (c) => {
 
 	return c.json(res.rows[0]);
 })
+
+if(process.env.TANKERKOENIG_API_KEY) {
+	app.get("/api/fuel/list", async (c) => {
+		// pass GET query parameters to the tankerkoenig API
+		const params = new URLSearchParams(c.req.query());
+		params.set("apikey", process.env.TANKERKOENIG_API_KEY!);
+		const url = `https://creativecommons.tankerkoenig.de/json/list.php?${params.toString()}`;
+		const response = await fetch(url);
+		if (!response.ok) {
+			return c.json({ error: "Failed to fetch fuel stations" });
+		}
+		const data = await response.json();
+		return c.json(data as Record<string, unknown>);
+	});
+	app.get("/api/fuel/prices", async (c) => {
+		// pass GET query parameters to the tankerkoenig API
+		const params = new URLSearchParams(c.req.query());
+		params.set("apikey", process.env.TANKERKOENIG_API_KEY!);
+		const url = `https://creativecommons.tankerkoenig.de/json/prices.php?${params.toString()}`;
+		const response = await fetch(url);
+		if (!response.ok) {
+			return c.json({ error: "Failed to fetch fuel prices" });
+		}
+		const data = await response.json();
+		return c.json(data as Record<string, unknown>);
+	});
+	app.get("/api/fuel/detail", async (c) => {
+		// pass GET query parameters to the tankerkoenig API
+		const params = new URLSearchParams(c.req.query());
+		params.set("apikey", process.env.TANKERKOENIG_API_KEY!);
+		const url = `https://creativecommons.tankerkoenig.de/json/detail.php?${params.toString()}`;
+		const response = await fetch(url);
+		if (!response.ok) {
+			return c.json({ error: "Failed to fetch station details" });
+		}
+		const data = await response.json();
+		return c.json(data as Record<string, unknown>);
+	});
+}
 
 if(process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
 	app.use("/api/ai", rateLimiter({
