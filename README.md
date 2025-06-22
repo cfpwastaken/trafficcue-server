@@ -29,11 +29,29 @@ You can run this yourself to host your own instance, or contribute to the offici
 
 ### Setup
 
-Docker is coming soon!
+#### Docker
+
+1. Build the Docker image:
+	 ```bash
+	 docker build -t trafficcue-server .
+	 ```
+2. Run the Docker container with the required environment variables:
+	 ```bash
+	 docker run -d \
+	   -p 3000:3000 \
+		 --add-host host.docker.internal:host-gateway \
+	   -e DATABASE_URL=postgres://user:password@host:port/database \
+		 ... # other environment variables as needed \
+	   trafficcue-server
+	 ```
+	 or use docker compose as usual.
+
+#### Local
 
 1. Clone this repository
 2. Run `bun install` to install dependencies
 3. Launch the app at `src/main.ts` with the environment variables set:
+	 - `DATABASE_URL` (PostgreSQL connection string: `postgres://user:password@host:port/database`)
 	 - `GOOGLE_GENERATIVE_AI_API_KEY` (optional, to enable MapAI features. Its free at Google!)
 	 - `TANKERKOENIG_API_KEY` (optional, to enable fuel price features. Its free!)
 	 - `OIDC_ENABLED` (needs to be enabled for most features requiring authentication)
