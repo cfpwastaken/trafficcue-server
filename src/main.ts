@@ -20,8 +20,7 @@ async function setupDB() {
 			longitude FLOAT NOT NULL,
 			rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
 			comment TEXT,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-			FOREIGN KEY (user_id) REFERENCES "user"(id)
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
 	`);
 }
