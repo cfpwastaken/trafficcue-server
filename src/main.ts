@@ -4,6 +4,9 @@ import { cors } from "hono/cors";
 import { pool } from "./db";
 import { post } from "./ai";
 import { rateLimiter } from "hono-rate-limiter";
+import { createBunWebSocket } from "hono/bun";
+import type { ServerWebSocket } from "bun";
+import type { WSContext } from "hono/ws";
 
 const app = new Hono<{
 	Variables: {
@@ -11,6 +14,7 @@ const app = new Hono<{
 		session: typeof auth.$Infer.Session.session | null
 	}
 }>();
+const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
 
 async function setupDB() {
 	await pool.query(`
@@ -171,8 +175,71 @@ if(process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
 	app.post("/api/ai", post);
 }
 
+let wsSubscribers: Record<string, WSContext<ServerWebSocket>[]> = {};
+
+app.get("/api/ws", upgradeWebSocket((c) => {
+	let advertising = "";
+	return {
+		onOpen(e, ws) {
+			console.log("WebSocket connection opened");
+			ws.send(JSON.stringify({ type: "welcome", message: "Welcome to TrafficCue WebSocket!" }));
+		},
+		onMessage(e, ws) {
+			const data = JSON.parse(e.data.toString());
+			console.log("WebSocket message received:", data);
+
+			if (data.type === "advertise") {
+				const code = data.code || randomCode();
+				wsSubscribers[code] = wsSubscribers[code] || [];
+				advertising = code;
+				ws.send(JSON.stringify({ type: "advertising", code }));
+			} else if (data.type === "subscribe") {
+				const code = data.code;
+				if (!code || !wsSubscribers[code]) {
+					ws.send(JSON.stringify({ type: "error", message: "Invalid or unknown code" }));
+					return;
+				}
+				wsSubscribers[code].push(ws);
+				ws.send(JSON.stringify({ type: "subscribed", code }));
+			} else if (data.type === "location") {
+				const subscribers = wsSubscribers[advertising] || [];
+				subscribers.forEach(subscriber => {
+					if (subscriber !== ws) {
+						subscriber.send(JSON.stringify({ type: "location", location: data.location, route: data.route }));
+					}
+				});
+			} else {
+				ws.send(JSON.stringify({ type: "error", message: "Unknown message type" }));
+			}
+		},
+		onClose(e, ws) {
+			// If they are subscribing, remove them from the subscribers list
+			for (const code in wsSubscribers) {
+				if (wsSubscribers[code]) {
+					wsSubscribers[code] = wsSubscribers[code].filter(subscriber => subscriber !== ws);
+					if (wsSubscribers[code].length === 0) {
+						delete wsSubscribers[code];
+					}
+				}
+			}
+		}
+	}
+}));
+
+function randomCode(length: number = 6): string {
+	const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	let result = "";
+	for (let i = 0; i < length; i++) {
+		result += characters.charAt(Math.floor(Math.random() * characters.length));
+	}
+	return result;
+}
+
 app.get("/", (c) => {
 	return c.text("TrafficCue Server");
 })
 
-export default app
+export default {
+	fetch: app.fetch,
+	websocket
+}
