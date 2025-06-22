@@ -1,19 +1,14 @@
 import { Hono } from "hono";
-import { auth } from "./auth";
 import { cors } from "hono/cors";
 import { pool } from "./db";
 import { post } from "./ai";
 import { rateLimiter } from "hono-rate-limiter";
+import { getTokenUID, verifyToken } from "./auth";
 import { createBunWebSocket } from "hono/bun";
 import type { ServerWebSocket } from "bun";
 import type { WSContext } from "hono/ws";
 
-const app = new Hono<{
-	Variables: {
-		user: typeof auth.$Infer.Session.user | null;
-		session: typeof auth.$Infer.Session.session | null
-	}
-}>();
+const app = new Hono();
 const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
 
 async function setupDB() {
@@ -32,20 +27,6 @@ async function setupDB() {
 }
 
 await setupDB();
-
-app.use("*", async (c, next) => {
-	const session = await auth.api.getSession({ headers: c.req.raw.headers });
-
-	if (!session) {
-		c.set("user", null);
-		c.set("session", null);
-		return next();
-	}
-
-	c.set("user", session.user);
-	c.set("session", session.session);
-	return next();
-});
 
 app.use(
 	"/api/*", // or replace with "*" to enable cors for all routes
@@ -73,11 +54,14 @@ app.get("/api/config", (c) => {
 	return c.json({
 		name: "TrafficCue Server",
 		version: "0",
-		capabilities
+		capabilities,
+		oidc: process.env.OIDC_ENABLED ? {
+			AUTH_URL: process.env.OIDC_AUTH_URL,
+			CLIENT_ID: process.env.OIDC_CLIENT_ID,
+			TOKEN_URL: process.env.OIDC_TOKEN_URL
+		} : undefined
 	})
 })
-
-app.on(["GET", "POST"], "/api/auth/**", (c) => auth.handler(c.req.raw));
 
 app.get("/api/reviews", async (c) => {
 	let {lat, lon} = c.req.query();
@@ -99,10 +83,7 @@ app.get("/api/reviews", async (c) => {
 			rating: row.rating,
 			comment: row.comment,
 			created_at: row.created_at,
-			username: await pool.query(
-				"SELECT username FROM \"user\" WHERE id = $1",
-				[row.user_id],
-			).then(res => res.rows[0]?.username || "Unknown"),
+			username: "Me" // TODO: Sync OIDC users with the database
 		};
 	})));
 });
@@ -113,14 +94,27 @@ app.post("/api/review", async (c) => {
 		return c.json({ error: "Rating, latitude, and longitude are required" }, 400);
 	}
 
-	const user = c.get("user");
-	if (!user) {
+	const authHeader = c.req.header("Authorization");
+	if (!authHeader || !authHeader.startsWith("Bearer ")) {
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+	const token = authHeader.split(" ")[1];
+	if (!token) {
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+	const isValid = await verifyToken(token);
+	if (!isValid) {
+		return c.json({ error: "Unauthorized" }, 401);
+	}
+
+	const uid = await getTokenUID(token);
+	if (!uid) {
 		return c.json({ error: "Unauthorized" }, 401);
 	}
 
 	const res = await pool.query(
 		"INSERT INTO reviews (user_id, latitude, longitude, rating, comment) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-		[user.id, lat, lon, rating, comment],
+		[uid, lat, lon, rating, comment],
 	);
 
 	return c.json(res.rows[0]);

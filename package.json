@@ -4,18 +4,21 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "@types/jwk-to-pem": "^2.0.3"
   },
   "peerDependencies": {
     "typescript": "^5"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.19",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/pg": "^8.15.1",
     "ai": "^4.3.16",
-    "better-auth": "^1.2.7",
     "hono": "^4.7.9",
     "hono-rate-limiter": "^0.4.2",
+    "jsonwebtoken": "^9.0.2",
+    "jwk-to-pem": "^2.0.7",
     "pg": "^8.16.0"
   }
 }
