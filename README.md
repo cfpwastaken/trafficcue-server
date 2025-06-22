@@ -35,6 +35,10 @@ You can run this yourself to host your own instance, or contribute to the offici
 	 ```bash
 	 docker build -t trafficcue-server .
 	 ```
+	 or pull the prebuilt image (recommended):
+	 ```bash
+	 docker pull git.picoscratch.de/trafficcue/trafficcue-server:latest
+	 ```
 2. Run the Docker container with the required environment variables:
 	 ```bash
 	 docker run -d \
