@@ -6,7 +6,7 @@ import z from "zod";
 
 export interface OverpassResult {
 	elements: OverpassElement[];
-};
+}
 
 export interface OverpassElement {
 	type: "node" | "way" | "relation";
@@ -19,7 +19,7 @@ export interface OverpassElement {
 		lat: number; // Only for relations
 		lon: number; // Only for relations
 	};
-};
+}
 
 const OVERPASS_SERVER = "https://overpass-api.de/api/interpreter";
 
