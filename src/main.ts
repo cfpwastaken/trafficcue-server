@@ -41,7 +41,15 @@ app.use(
 );
 
 app.get("/api/config", (c) => {
-	const capabilities: string[] = ["auth", "reviews"];
+	const capabilities: string[] = [];
+
+	if(process.env.OIDC_ENABLED) {
+		capabilities.push("auth");
+	}
+
+	if(process.env.REVIEWS_ENABLED) {
+		capabilities.push("reviews");
+	}
 
 	if(process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
 		capabilities.push("ai");
@@ -63,62 +71,64 @@ app.get("/api/config", (c) => {
 	})
 })
 
-app.get("/api/reviews", async (c) => {
-	let {lat, lon} = c.req.query();
-	if (!lat || !lon) {
-		return c.json({ error: "Latitude and longitude are required" }, 400);
-	}
-	// Remove unnecessary precision from lat/lon
-	lat = parseFloat(lat).toFixed(6);
-	lon = parseFloat(lon).toFixed(6);
-	console.log(`Fetching reviews for lat: ${lat}, lon: ${lon}`);
-	const res = await pool.query(
-		"SELECT * FROM reviews WHERE latitude = $1 AND longitude = $2",
-		[lat, lon],
-	);
-	return c.json(await Promise.all(res.rows.map(async (row) => {
-		return {
-			id: row.id,
-			user_id: row.user_id,
-			rating: row.rating,
-			comment: row.comment,
-			created_at: row.created_at,
-			username: "Me" // TODO: Sync OIDC users with the database
-		};
-	})));
-});
+if(process.env.REVIEWS_ENABLED) {
+	app.get("/api/reviews", async (c) => {
+		let {lat, lon} = c.req.query();
+		if (!lat || !lon) {
+			return c.json({ error: "Latitude and longitude are required" }, 400);
+		}
+		// Remove unnecessary precision from lat/lon
+		lat = parseFloat(lat).toFixed(6);
+		lon = parseFloat(lon).toFixed(6);
+		console.log(`Fetching reviews for lat: ${lat}, lon: ${lon}`);
+		const res = await pool.query(
+			"SELECT * FROM reviews WHERE latitude = $1 AND longitude = $2",
+			[lat, lon],
+		);
+		return c.json(await Promise.all(res.rows.map(async (row) => {
+			return {
+				id: row.id,
+				user_id: row.user_id,
+				rating: row.rating,
+				comment: row.comment,
+				created_at: row.created_at,
+				username: "Me" // TODO: Sync OIDC users with the database
+			};
+		})));
+	});
 
-app.post("/api/review", async (c) => {
-	const { rating, comment, lat, lon } = await c.req.json();
-	if (!rating || !lat || !lon) {
-		return c.json({ error: "Rating, latitude, and longitude are required" }, 400);
-	}
+	app.post("/api/review", async (c) => {
+		const { rating, comment, lat, lon } = await c.req.json();
+		if (!rating || !lat || !lon) {
+			return c.json({ error: "Rating, latitude, and longitude are required" }, 400);
+		}
 
-	const authHeader = c.req.header("Authorization");
-	if (!authHeader || !authHeader.startsWith("Bearer ")) {
-		return c.json({ error: "Unauthorized" }, 401);
-	}
-	const token = authHeader.split(" ")[1];
-	if (!token) {
-		return c.json({ error: "Unauthorized" }, 401);
-	}
-	const isValid = await verifyToken(token);
-	if (!isValid) {
-		return c.json({ error: "Unauthorized" }, 401);
-	}
+		const authHeader = c.req.header("Authorization");
+		if (!authHeader || !authHeader.startsWith("Bearer ")) {
+			return c.json({ error: "Unauthorized" }, 401);
+		}
+		const token = authHeader.split(" ")[1];
+		if (!token) {
+			return c.json({ error: "Unauthorized" }, 401);
+		}
+		const isValid = await verifyToken(token);
+		if (!isValid) {
+			return c.json({ error: "Unauthorized" }, 401);
+		}
 
-	const uid = await getTokenUID(token);
-	if (!uid) {
-		return c.json({ error: "Unauthorized" }, 401);
-	}
+		const uid = await getTokenUID(token);
+		if (!uid) {
+			return c.json({ error: "Unauthorized" }, 401);
+		}
 
-	const res = await pool.query(
-		"INSERT INTO reviews (user_id, latitude, longitude, rating, comment) VALUES ($1, $2, $3, $4, $5) RETURNING *",
-		[uid, lat, lon, rating, comment],
-	);
+		const res = await pool.query(
+			"INSERT INTO reviews (user_id, latitude, longitude, rating, comment) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+			[uid, lat, lon, rating, comment],
+		);
 
-	return c.json(res.rows[0]);
-})
+		return c.json(res.rows[0]);
+	})
+}
 
 if(process.env.TANKERKOENIG_API_KEY) {
 	app.get("/api/fuel/list", async (c) => {

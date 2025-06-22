@@ -36,10 +36,11 @@ Docker is coming soon!
 3. Launch the app at `src/main.ts` with the environment variables set:
 	 - `GOOGLE_GENERATIVE_AI_API_KEY` (optional, to enable MapAI features. Its free at Google!)
 	 - `TANKERKOENIG_API_KEY` (optional, to enable fuel price features. Its free!)
-	 - `OIDC_ENABLED` (required to be set to `true`)
+	 - `OIDC_ENABLED` (needs to be enabled for most features requiring authentication)
 	 - `OIDC_AUTH_URL` (the Authentication URL of your OIDC server)
 	 - `OIDC_CLIENT_ID` (the Client ID of your OIDC server)
 	 - `OIDC_TOKEN_URL` (the Token URL of your OIDC server)
 	 - `OIDC_JWKS_URL` (the JWKS/Certificate URL of your OIDC server)
+	 - `REVIEWS_ENABLED` (optional, set to `true` to enable POI reviews by users, requires OIDC)
 
 When configuring your OIDC server, make sure to enable Public Client and PCKE support.
