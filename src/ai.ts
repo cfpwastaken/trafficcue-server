@@ -4,11 +4,11 @@ import { google } from "@ai-sdk/google";
 import { stream } from "hono/streaming";
 import z from "zod";
 
-export type OverpassResult = {
+export interface OverpassResult {
 	elements: OverpassElement[];
 };
 
-export type OverpassElement = {
+export interface OverpassElement {
 	type: "node" | "way" | "relation";
 	id: number;
 	tags: Record<string, string>;
