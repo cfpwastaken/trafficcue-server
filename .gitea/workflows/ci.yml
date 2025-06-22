@@ -1,0 +1,13 @@
+name: TrafficCue Server CI
+on: [push]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        run: bun i
+      - run: bunx eslint
+      - run: bunx prettier --check .
